@@ -335,7 +335,7 @@ map_ggplot <- ggplot(world_prices) +
   ) +
   labs(
     title = "Mediana cen produktów IKEA według kraju",
-    subtitle = "Ceny przeliczone na EUR; mapa wykonana z użyciem ggplot2 i sf",
+    subtitle = "Ceny przeliczone na EUR",
     fill = "Mediana\nceny EUR"
   ) +
   theme_void() +
