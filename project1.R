@@ -1,12 +1,6 @@
 # ============================================================
 # IKEA Global Product Catalog 2026
 # Rozkład cen produktów IKEA na świecie po przeliczeniu na EUR
-#
-# Wymagania:
-# - interaktywne grafiki: plotly
-# - mapa: ggplot2 + sf
-# - główna mapa interaktywna: plotly choropleth
-# - bez Shiny
 # ============================================================
 
 
@@ -230,6 +224,27 @@ if (nrow(missing_rates) > 0) {
 }
 
 # ============================================================
+# ============================================================
+# 8A. Przeliczenie cen lokalnych na EUR
+# ============================================================
+# Wartości z Frankfurter i manual_rates_tbl mają postać:
+# 1 EUR = X jednostek lokalnej waluty.
+# Dlatego cena w EUR = cena lokalna / rate_per_eur.
+
+ikea_eur <- ikea |>
+  left_join(rates_tbl, by = "currency") |>
+  mutate(
+    price_eur = price_num / rate_per_eur
+  ) |>
+  filter(
+    !is.na(price_eur),
+    price_eur > 0
+  )
+
+ikea_eur
+
+
+
 # 9. Statystyki cen EUR per kraj
 # ============================================================
 
@@ -302,6 +317,166 @@ country_prices
 
 
 # ============================================================
+# ============================================================
+# 10B. Dane PPP do przyszłego użycia w projekcie
+# ============================================================
+# PPP = parytet siły nabywczej.
+# Używamy wskaźnika World Bank PA.NUS.PRVT.PP:
+# PPP conversion factor, private consumption
+# local currency unit per international dollar.
+#
+# Dla produktu konsumenckiego:
+# price_ppp_int_dollar = cena lokalna / PPP
+#
+# Jednostka price_ppp_int_dollar to dolar międzynarodowy PPP,
+# a nie zwykły USD ani EUR.
+
+ppp_indicator <- "PA.NUS.PRVT.PP"
+
+ppp_url <- paste0(
+  "https://api.worldbank.org/v2/country/all/indicator/",
+  ppp_indicator,
+  "?format=json&per_page=20000"
+)
+
+ppp_response <- request(ppp_url) |>
+  req_perform()
+
+ppp_json <- ppp_response |>
+  resp_body_json()
+
+ppp_tbl <- bind_rows(lapply(ppp_json[[2]], function(x) {
+  tibble(
+    iso3 = x$countryiso3code,
+    ppp_year = as.integer(x$date),
+    ppp_lcu_per_int_dollar = as.numeric(x$value)
+  )
+})) |>
+  filter(
+    !is.na(iso3),
+    iso3 != "",
+    !is.na(ppp_lcu_per_int_dollar),
+    ppp_lcu_per_int_dollar > 0
+  ) |>
+  group_by(iso3) |>
+  slice_max(ppp_year, n = 1, with_ties = FALSE) |>
+  ungroup()
+
+# Kontrola krajów z danych IKEA, dla których nie znaleziono PPP.
+missing_ppp <- ikea |>
+  distinct(country, country_clean, iso3) |>
+  filter(!is.na(iso3)) |>
+  anti_join(ppp_tbl, by = "iso3") |>
+  arrange(country_clean)
+
+missing_ppp
+
+if (nrow(missing_ppp) > 0) {
+  warning(
+    paste0(
+      "Brakuje PPP dla krajów: ",
+      paste(missing_ppp$country_clean, collapse = ", "),
+      "\nKraje bez PPP będą pominięte w metrykach PPP."
+    )
+  )
+}
+
+# Dane produktowe rozszerzone o PPP.
+# Zostawiamy je jako osobny obiekt, żeby w przyszłości można było
+# użyć PPP również w wykresach interaktywnych, rankingach i boxplotach.
+ikea_ppp <- ikea |>
+  left_join(ppp_tbl, by = "iso3") |>
+  mutate(
+    price_ppp_int_dollar = price_num / ppp_lcu_per_int_dollar
+  )
+
+# Statystyki cen PPP per kraj.
+country_prices_ppp <- ikea_ppp |>
+  filter(
+    !is.na(iso3),
+    !is.na(price_ppp_int_dollar),
+    price_ppp_int_dollar > 0
+  ) |>
+  group_by(country_clean, iso3) |>
+  summarise(
+    n_records = n(),
+    n_products = n_distinct(product_id),
+    n_main_categories = n_distinct(main_category),
+    n_sub_categories = n_distinct(sub_category),
+    
+    median_price_ppp = median(price_ppp_int_dollar, na.rm = TRUE),
+    mean_price_ppp = mean(price_ppp_int_dollar, na.rm = TRUE),
+    min_price_ppp = min(price_ppp_int_dollar, na.rm = TRUE),
+    q1_price_ppp = quantile(price_ppp_int_dollar, 0.25, na.rm = TRUE),
+    q3_price_ppp = quantile(price_ppp_int_dollar, 0.75, na.rm = TRUE),
+    max_price_ppp = max(price_ppp_int_dollar, na.rm = TRUE),
+    iqr_price_ppp = IQR(price_ppp_int_dollar, na.rm = TRUE),
+    
+    mean_rating = mean(product_rating_num, na.rm = TRUE),
+    median_rating_count = median(product_rating_count_num, na.rm = TRUE),
+    
+    ppp_year = max(ppp_year, na.rm = TRUE),
+    currencies = paste(sort(unique(currency)), collapse = ", "),
+    .groups = "drop"
+  ) |>
+  mutate(
+    price_range_ppp = max_price_ppp - min_price_ppp
+  )
+
+# Indeks PPP dla tych samych produktów, analogiczny do indeksu EUR.
+product_global_prices_ppp <- ikea_ppp |>
+  group_by(product_id) |>
+  summarise(
+    global_product_median_ppp = median(price_ppp_int_dollar, na.rm = TRUE),
+    countries_available = n_distinct(country_clean),
+    .groups = "drop"
+  ) |>
+  filter(
+    countries_available >= 3,
+    !is.na(global_product_median_ppp),
+    global_product_median_ppp > 0
+  )
+
+country_price_index_ppp <- ikea_ppp |>
+  inner_join(product_global_prices_ppp, by = "product_id") |>
+  mutate(
+    relative_price_ppp = price_ppp_int_dollar / global_product_median_ppp
+  ) |>
+  group_by(country_clean, iso3) |>
+  summarise(
+    price_index_ppp = median(relative_price_ppp, na.rm = TRUE) * 100,
+    compared_products_ppp = n_distinct(product_id),
+    .groups = "drop"
+  )
+
+country_prices_ppp <- country_prices_ppp |>
+  left_join(
+    country_price_index_ppp,
+    by = c("country_clean", "iso3")
+  )
+
+country_prices_ppp
+
+# Diagnostyka wartości skrajnych PPP.
+# Przy mapach choropletycznych pojedynczy kraj o bardzo wysokiej medianie
+# może rozciągnąć skalę kolorów i obniżyć czytelność pozostałych krajów.
+ppp_top_countries <- country_prices_ppp |>
+  arrange(desc(median_price_ppp)) |>
+  select(
+    country_clean,
+    iso3,
+    median_price_ppp,
+    mean_price_ppp,
+    n_records,
+    n_products,
+    ppp_year,
+    currencies
+  ) |>
+  slice_head(n = 15)
+
+ppp_top_countries
+
+
 # 11. Mapa świata: sf
 # ============================================================
 
@@ -313,6 +488,12 @@ world <- ne_countries(
 world_prices <- world |>
   left_join(
     country_prices,
+    by = c("iso_a3" = "iso3")
+  )
+
+world_prices_ppp <- world |>
+  left_join(
+    country_prices_ppp,
     by = c("iso_a3" = "iso3")
   )
 
@@ -357,10 +538,81 @@ ggsave(
 
 
 # ============================================================
+# 12B. Statyczna mapa ggplot2 + sf — PPP
+# ============================================================
+# Ta mapa jest odpowiednikiem punktu 12, ale pokazuje medianę cen
+# po korekcie parytetem siły nabywczej.
+# Jednostka: dolary międzynarodowe PPP.
+#
+# Korekty względem podstawowej wersji:
+# - usunięcie Antarktydy z kompozycji mapy,
+# - skala logarytmiczna, żeby pojedyncze wartości skrajne
+#   nie dominowały całej palety kolorów,
+# - jawne białe tło i czarny tekst dla poprawnego eksportu PNG,
+# - doprecyzowana legenda i podtytuł.
+#
+# Nie stosujemy progu minimalnej liczby produktów — wszystkie kraje
+# z dostępną wartością PPP pozostają widoczne.
+
+world_prices_ppp_plot <- world_prices_ppp |>
+  filter(continent != "Antarctica")
+
+map_ggplot_ppp <- ggplot(world_prices_ppp_plot) +
+  geom_sf(
+    aes(fill = median_price_ppp),
+    color = "white",
+    linewidth = 0.15
+  ) +
+  scale_fill_viridis_c(
+    option = "viridis",
+    trans = "log10",
+    na.value = "grey90",
+    labels = label_number(big.mark = " ", suffix = " intl. $")
+  ) +
+  labs(
+    title = "Mediana cen produktów IKEA według kraju",
+    subtitle = "Ceny przeliczone z walut lokalnych na dolary międzynarodowe PPP; skala kolorów: log10",
+    fill = "Mediana ceny\nw intl. $ PPP"
+  ) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA),
+    legend.key = element_rect(fill = "white", color = NA),
+    plot.title = element_text(face = "bold", size = 16, color = "black"),
+    plot.subtitle = element_text(size = 11, color = "black"),
+    legend.title = element_text(color = "black"),
+    legend.text = element_text(color = "black"),
+    legend.position = "right"
+  )
+
+map_ggplot_ppp
+
+ggsave(
+  filename = "ikea_static_price_map_ggplot_sf_ppp.png",
+  plot = map_ggplot_ppp,
+  width = 12,
+  height = 7,
+  dpi = 300,
+  bg = "white"
+)
+
+
+# ============================================================
 # 13. Dane do głównej interaktywnej mapy plotly
 # ============================================================
 
 map_long <- country_prices |>
+  left_join(
+    country_prices_ppp |>
+      select(
+        country_clean,
+        iso3,
+        median_price_ppp
+      ),
+    by = c("country_clean", "iso3")
+  ) |>
   select(
     country_clean,
     iso3,
@@ -371,9 +623,7 @@ map_long <- country_prices |>
     n_sub_categories,
     median_price_eur,
     mean_price_eur,
-    q1_price_eur,
-    q3_price_eur,
-    iqr_price_eur,
+    median_price_ppp,
     price_range_eur,
     price_index,
     compared_products
@@ -382,9 +632,7 @@ map_long <- country_prices |>
     cols = c(
       median_price_eur,
       mean_price_eur,
-      q1_price_eur,
-      q3_price_eur,
-      iqr_price_eur,
+      median_price_ppp,
       price_range_eur,
       price_index
     ),
@@ -396,14 +644,13 @@ map_long <- country_prices |>
       metric,
       median_price_eur = "Mediana ceny w EUR",
       mean_price_eur = "Średnia cena w EUR",
-      q1_price_eur = "Pierwszy kwartyl ceny w EUR",
-      q3_price_eur = "Trzeci kwartyl ceny w EUR",
-      iqr_price_eur = "Rozstęp międzykwartylowy cen w EUR",
+      median_price_ppp = "Mediana ceny PPP",
       price_range_eur = "Zakres cen w EUR",
       price_index = "Indeks cenowy tych samych produktów"
     ),
     value_label = case_when(
       metric == "price_index" ~ paste0(round(value, 1), " pkt"),
+      metric == "median_price_ppp" ~ paste0(round(value, 2), " intl. $ PPP"),
       TRUE ~ paste0(round(value, 2), " EUR")
     ),
     hover_text = paste0(
@@ -427,9 +674,7 @@ map_long <- country_prices |>
 metric_order <- c(
   "Mediana ceny w EUR",
   "Średnia cena w EUR",
-  "Pierwszy kwartyl ceny w EUR",
-  "Trzeci kwartyl ceny w EUR",
-  "Rozstęp międzykwartylowy cen w EUR",
+  "Mediana ceny PPP",
   "Zakres cen w EUR",
   "Indeks cenowy tych samych produktów"
 )
@@ -484,9 +729,16 @@ buttons <- lapply(seq_along(metrics), function(i) {
     args = list(
       list(visible = visible_vector),
       list(
-        title = paste0(
-          "Rozkład cen produktów IKEA na świecie — ",
-          metrics[i]
+        title = list(
+          text = paste0(
+            "Rozkład cen produktów IKEA na świecie<br><sup>",
+            metrics[i],
+            "</sup>"
+          ),
+          x = 0.02,
+          xanchor = "left",
+          y = 0.97,
+          yanchor = "top"
         )
       )
     ),
@@ -498,10 +750,14 @@ fig_map <- fig_map |>
   layout(
     title = list(
       text = paste0(
-        "Rozkład cen produktów IKEA na świecie — ",
-        metrics[1]
+        "Rozkład cen produktów IKEA na świecie<br><sup>",
+        metrics[1],
+        "</sup>"
       ),
-      x = 0.02
+      x = 0.02,
+      xanchor = "left",
+      y = 0.97,
+      yanchor = "top"
     ),
     updatemenus = list(
       list(
@@ -509,10 +765,11 @@ fig_map <- fig_map |>
         active = 0,
         buttons = buttons,
         direction = "down",
-        x = 0.02,
-        y = 1.08,
-        xanchor = "left",
-        yanchor = "top"
+        x = 1,
+        y = 1.15,
+        xanchor = "right",
+        yanchor = "top",
+        pad = list(r = 10, t = 0)
       )
     ),
     geo = list(
@@ -525,8 +782,8 @@ fig_map <- fig_map |>
     ),
     margin = list(
       l = 0,
-      r = 0,
-      t = 90,
+      r = 10,
+      t = 130,
       b = 0
     )
   ) |>
@@ -654,3 +911,24 @@ write_csv(
   ikea_eur,
   "ikea_product_catalog_with_eur_prices.csv"
 )
+
+write_csv(
+  ppp_tbl,
+  "ppp_conversion_factors_private_consumption.csv"
+)
+
+write_csv(
+  ppp_top_countries,
+  "ikea_ppp_top_15_countries_diagnostics.csv"
+)
+
+write_csv(
+  country_prices_ppp,
+  "ikea_country_price_statistics_ppp.csv"
+)
+
+write_csv(
+  ikea_ppp,
+  "ikea_product_catalog_with_ppp_prices.csv"
+)
+
