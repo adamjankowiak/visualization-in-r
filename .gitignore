@@ -2,3 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
+app_backup.R
+PROPOZYCJE_ROZBUDOWY.md
+app_backup2.R
+MIGRATION.md
+
+# Large local data files - not tracked in Git
+/data/IKEA_product_catalog.csv
+/data/ikea_product_catalog_with_eur_prices.csv
+/data/ikea_product_catalog_with_ppp_prices.csv
