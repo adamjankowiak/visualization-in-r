@@ -1,24 +1,20 @@
 # visualization-in-r — IKEA Price Explorer
 
-Nowa struktura projektu `visualization-in-r` jako aplikacja Shiny Dashboard. Projekt jest przygotowany tak, żeby można było usunąć stare pliki z repozytorium i wkleić zawartość tej paczki ZIP jako nowy projekt RStudio.
-
 ## Szybkie uruchomienie w RStudio
 
-1. Rozpakuj ZIP.
-2. Skopiuj zawartość rozpakowanego ZIP-a do katalogu repozytorium `visualization-in-r`.
-3. Otwórz w RStudio plik:
+1. Otwórz w RStudio plik:
 
 ```text
 visualization-in-r.Rproj
 ```
 
-4. W konsoli RStudio uruchom instalację pakietów:
+2. W konsoli RStudio uruchom instalację pakietów:
 
 ```r
 source("install_packages.R")
 ```
 
-5. Uruchom aplikację:
+3. Uruchom aplikację:
 
 ```r
 shiny::runApp()
