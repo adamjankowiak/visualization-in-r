@@ -307,8 +307,7 @@ ui <- shinydashboard::dashboardPage(
               "zakładka szczegółowa prezentuje wybrany kraj przez indeks cenowy EUR, indeks cenowy PPP, podstawowe parametry katalogu oraz zestawienie median, średnich i indeksów na jednym profilu cenowym."
             ),
             h4("Struktura plików"),
-            tags$pre("app.R\ndata/\n  ikea_country_price_statistics_eur.csv\n  ikea_country_price_statistics_ppp.csv\n  ikea_ppp_top_15_countries_diagnostics.csv\n  ppp_conversion_factors_private_consumption.csv\nwww/\n  ikea_interactive_choropleth_price_map_eur.html\n  ikea_price_ranking_plotly_eur.html\n  ikea_static_price_map_ggplot_sf_eur.png\n  ikea_static_price_map_ggplot_sf_ppp.png\nR/\n  project1_country_names_pl.R\n  prepare_dashboard_data.R")
-          )
+            tags$pre(".gitignore\nvisualization-in-r.Rproj\napp.R\ninstall_packages.R\nrun_app.R\nREADME.md\nproject1.R\nR/\n  project1_country_names_pl.R\n  prepare_dashboard_data.R\ndata/\n  ikea_country_price_statistics_eur.csv\n  ikea_country_price_statistics_ppp.csv\n  ikea_ppp_top_15_countries_diagnostics.csv\n  ppp_conversion_factors_private_consumption.csv\nwww/\n  ikea_interactive_choropleth_price_map_eur.html\n  ikea_price_ranking_plotly_eur.html\n  ikea_static_price_map_ggplot_sf_eur.png\n  ikea_static_price_map_ggplot_sf_ppp.png\narchive/\n  original_Rhistory_not_used_by_app.Rhistory.txt")          )
         )
       )
     )

@@ -49,8 +49,6 @@ app.R
 install_packages.R
 run_app.R
 README.md
-MIGRATION.md
-PROPOZYCJE_ROZBUDOWY.md
 project1.R
 R/
   project1_country_names_pl.R
