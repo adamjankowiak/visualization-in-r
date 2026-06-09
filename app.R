@@ -283,28 +283,28 @@ ui <- shinydashboard::dashboardPage(
             solidHeader = TRUE,
             div(
               class = "note-card",
-              tags$b("Cel: "),
-              "dashboard porównuje ceny produktów IKEA między krajami w EUR oraz w dolarach międzynarodowych PPP. "
+              tags$b("Cel projektu: "),
+              "aplikacja Shiny umożliwia eksplorację różnic cen produktów IKEA między krajami. Porównania są prezentowane w EUR oraz po korekcie parytetem siły nabywczej PPP, dzięki czemu można zestawić nominalne ceny z ich ujęciem względnym."
             ),
             div(
               class = "note-card",
-              tags$b("Źródło logiki: "),
-              "główny panel odtwarza logikę metryk z project1_country_names_pl.R w formie reaktywnej; artefakty map HTML/PNG pozostają w strukturze projektu jako pliki wyjściowe."
+              tags$b("Zakres danych: "),
+              "dashboard korzysta z przygotowanych plików CSV zawierających statystyki cenowe dla krajów, indeksy cenowe, metryki PPP, liczebność produktów, informacje o walutach oraz podstawowe charakterystyki katalogu."
             ),
             div(
               class = "note-card",
-              tags$b("Sterowanie użytkownika: "),
-              "metryka, filtr krajów, kierunek rankingu, liczba krajów w rankingu, skala logarytmiczna oraz wybór kraju do analizy szczegółowej."
+              tags$b("Funkcje panelu głównego: "),
+              "użytkownik może wybrać metrykę, filtrować kraje, zmienić kierunek i długość rankingu, włączyć skalę log10 na mapie oraz pobrać przefiltrowany zestaw danych do pliku CSV."
             ),
-            h4("Proponowane rozszerzenia interaktywne"),
-            tags$ol(
-              tags$li("Wczytywanie surowego pliku data/IKEA_product_catalog.csv bezpośrednio z interfejsu i przebudowa metryk po stronie aplikacji."),
-              tags$li("Filtr kategorii głównej i podkategorii, jeżeli do projektu zostanie dodany surowy katalog produktowy."),
-              tags$li("Porównywarka koszyka: użytkownik wybiera kilka produktów, a aplikacja pokazuje koszt koszyka w każdym kraju."),
-              tags$li("Alerty odstępstw: automatyczne oznaczanie krajów, w których PPP lub indeks tych samych produktów istotnie odbiega od mediany."),
-              tags$li("Mapa po kliknięciu kraju aktualizująca wszystkie liczniki i wykresy profilu kraju."),
-              tags$li("Eksport bieżącego widoku do CSV/PNG oraz raportu HTML."),
-              tags$li("Warstwa metodologiczna: widok braków danych, liczebności produktów i walut użytych w przeliczeniach.")
+            div(
+              class = "note-card",
+              tags$b("Wizualizacje: "),
+              "aplikacja pokazuje interaktywną mapę choropletyczną, ranking krajów, liczniki podsumowujące bieżący widok, tabelę z filtrowanymi danymi oraz wykresy profilu wybranego kraju."
+            ),
+            div(
+              class = "note-card",
+              tags$b("Analiza kraju: "),
+              "zakładka szczegółowa prezentuje wybrany kraj przez indeks cenowy EUR, indeks cenowy PPP, podstawowe parametry katalogu oraz zestawienie median, średnich i indeksów na jednym profilu cenowym."
             ),
             h4("Struktura plików"),
             tags$pre("app.R\ndata/\n  ikea_country_price_statistics_eur.csv\n  ikea_country_price_statistics_ppp.csv\n  ikea_ppp_top_15_countries_diagnostics.csv\n  ppp_conversion_factors_private_consumption.csv\nwww/\n  ikea_interactive_choropleth_price_map_eur.html\n  ikea_price_ranking_plotly_eur.html\n  ikea_static_price_map_ggplot_sf_eur.png\n  ikea_static_price_map_ggplot_sf_ppp.png\nR/\n  project1_country_names_pl.R\n  prepare_dashboard_data.R")
