@@ -1,4 +1,5 @@
 # visualization-in-r — IKEA Price Explorer
+Rozwinięcie mniejszego projektu analizy danych
 
 ## Szybkie uruchomienie w RStudio
 
@@ -27,9 +28,6 @@ source("run_app.R")
 ```
 
 ## Co zawiera dashboard
-
-Aplikacja spełnia wymagania projektu:
-
 - zawiera grafiki: interaktywną mapę choropletyczną, ranking krajów, wykres punktowy, gauge dla kraju i statyczne mapy,
 - zawiera prezentacje liczbowe w formie liczników KPI i wskaźników gauge,
 - pozwala sterować widokiem: wybór metryki, krajów, liczby pozycji w rankingu, kierunku sortowania, skali log10 i kraju do analizy szczegółowej,
